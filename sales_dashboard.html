@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sales & Revenue Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #060912;
+    --card: #0d1221;
+    --card2: #111827;
+    --cyan: #00e5ff;
+    --lime: #aaff00;
+    --pink: #ff3d9a;
+    --text: #e8eaf6;
+    --muted: #4a5568;
+    --border: rgba(255,255,255,0.05);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    font-family: 'Syne', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 28px;
+    background-image:
+      radial-gradient(ellipse 60% 40% at 10% 5%, rgba(0,229,255,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 90% 90%, rgba(255,61,154,0.06) 0%, transparent 60%);
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-size: 50px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  h1 span { color: var(--lime); }
+  .live-badge {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--cyan);
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+    padding: 8px 16px; border-radius: 8px;
+  }
+  .dot { width:7px;height:7px;border-radius:50%;background:var(--lime);animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+  /* KPI */
+  .kpi-row { display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px; }
+  .kpi {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    animation: slideIn 0.5s ease both;
+  }
+  .kpi:nth-child(1){animation-delay:0.1s}
+  .kpi:nth-child(2){animation-delay:0.2s}
+  .kpi:nth-child(3){animation-delay:0.3s}
+  .kpi:nth-child(4){animation-delay:0.4s}
+  @keyframes slideIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .kpi::after {
+    content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  }
+  .kpi:nth-child(1)::after{background:var(--cyan)}
+  .kpi:nth-child(2)::after{background:var(--lime)}
+  .kpi:nth-child(3)::after{background:var(--pink)}
+  .kpi:nth-child(4)::after{background:#a78bfa}
+  .kpi-label { font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--muted);margin-bottom:8px;text-transform:uppercase; }
+  .kpi-value { font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1; }
+  .kpi:nth-child(1) .kpi-value{color:var(--cyan)}
+  .kpi:nth-child(2) .kpi-value{color:var(--lime)}
+  .kpi:nth-child(3) .kpi-value{color:var(--pink)}
+  .kpi:nth-child(4) .kpi-value{color:#a78bfa}
+  .kpi-change { font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:6px;color:var(--muted); }
+  .kpi-change.up{color:var(--lime)} .kpi-change.dn{color:var(--pink)}
+
+  /* CARDS */
+  .grid-2{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;margin-bottom:18px}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;}
+  .card-title{
+    font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:3px;
+    text-transform:uppercase;color:var(--muted);margin-bottom:18px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .card-title::before{content:'//';color:var(--cyan);font-size:10px;}
+  canvas{max-height:210px;}
+
+  /* TOP PRODUCTS TABLE */
+  .prod-table{width:100%;border-collapse:collapse;}
+  .prod-table th{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 0;border-bottom:1px solid var(--border);}
+  .prod-table td{padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;font-family:'JetBrains Mono',monospace;}
+  .prod-table tr:last-child td{border-bottom:none;}
+  .rank{color:var(--cyan);font-weight:500;}
+  .rev-bar-wrap{display:flex;align-items:center;gap:8px;}
+  .rev-bar{height:6px;border-radius:99px;background:var(--cyan);opacity:0.7;}
+  .rev-val{color:var(--lime);font-size:12px;}
+
+  /* REGION CARDS */
+  .region-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .region-chip{
+    background:var(--card2);border:1px solid var(--border);border-radius:8px;
+    padding:12px 14px;display:flex;justify-content:space-between;align-items:center;
+  }
+  .region-name{font-size:12px;color:var(--muted);}
+  .region-val{font-size:18px;font-weight:700;color:var(--text);}
+  .region-change{font-family:'JetBrains Mono',monospace;font-size:10px;}
+
+  .footer{text-align:center;margin-top:22px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;}
+  .footer span{color:var(--cyan);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="eyebrow">// sales_analytics.dashboard</div>
+    <h1>SALES & <span>REVENUE</span><br>ANALYTICS</h1>
+  </div>
+  <div class="live-badge"><div class="dot"></div>LIVE · FY 2024</div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-label">Total Revenue</div>
+    <div class="kpi-value">$8.4M</div>
+    <div class="kpi-change up">↑ +22.3% vs LY</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Units Sold</div>
+    <div class="kpi-value">14,820</div>
+    <div class="kpi-change up">↑ +15.8% vs LY</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Avg Order Value</div>
+    <div class="kpi-value">$567</div>
+    <div class="kpi-change up">↑ +5.6% vs LY</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Customer Retention</div>
+    <div class="kpi-value">74%</div>
+    <div class="kpi-change dn">↓ -2.1pts vs LY</div>
+  </div>
+</div>
+
+<!-- ROW 1 -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Monthly Revenue Trend (USD '000)</div>
+    <canvas id="trendChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">Revenue by Product Category</div>
+    <canvas id="catChart"></canvas>
+  </div>
+</div>
+
+<!-- ROW 2 -->
+<div class="grid-3">
+  <div class="card" style="grid-column:span 2">
+    <div class="card-title">Top Performing Products</div>
+    <table class="prod-table">
+      <thead>
+        <tr><th>#</th><th>Product</th><th>Revenue</th><th>Units</th><th>Growth</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="rank">01</td>
+          <td>Enterprise Suite</td>
+          <td><div class="rev-bar-wrap"><div class="rev-bar" style="width:90px"></div><span class="rev-val">$2.1M</span></div></td>
+          <td>3,240</td>
+          <td style="color:var(--lime)">↑ 34%</td>
+        </tr>
+        <tr>
+          <td class="rank">02</td>
+          <td>Analytics Pro</td>
+          <td><div class="rev-bar-wrap"><div class="rev-bar" style="width:70px"></div><span class="rev-val">$1.8M</span></div></td>
+          <td>2,890</td>
+          <td style="color:var(--lime)">↑ 28%</td>
+        </tr>
+        <tr>
+          <td class="rank">03</td>
+          <td>Data Connector</td>
+          <td><div class="rev-bar-wrap"><div class="rev-bar" style="width:55px"></div><span class="rev-val">$1.4M</span></div></td>
+          <td>4,100</td>
+          <td style="color:var(--lime)">↑ 19%</td>
+        </tr>
+        <tr>
+          <td class="rank">04</td>
+          <td>Starter Pack</td>
+          <td><div class="rev-bar-wrap"><div class="rev-bar" style="width:38px"></div><span class="rev-val">$0.9M</span></div></td>
+          <td>4,590</td>
+          <td style="color:var(--pink)">↓ 4%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Regional Performance</div>
+    <div class="region-grid">
+      <div class="region-chip">
+        <div><div class="region-name">North</div><div class="region-val">$2.9M</div></div>
+        <div class="region-change" style="color:var(--lime)">+24%</div>
+      </div>
+      <div class="region-chip">
+        <div><div class="region-name">South</div><div class="region-val">$2.1M</div></div>
+        <div class="region-change" style="color:var(--lime)">+18%</div>
+      </div>
+      <div class="region-chip">
+        <div><div class="region-name">East</div><div class="region-val">$1.8M</div></div>
+        <div class="region-change" style="color:var(--lime)">+31%</div>
+      </div>
+      <div class="region-chip">
+        <div><div class="region-name">West</div><div class="region-val">$1.6M</div></div>
+        <div class="region-change" style="color:var(--pink)">-3%</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);line-height:1.7;">
+      East region shows highest growth opportunity at <span style="color:var(--lime)">+31% YoY</span>. West requires strategic review.
+    </div>
+  </div>
+</div>
+
+<!-- ROW 3: Quarterly + Conversion -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Quarterly Revenue vs Target</div>
+    <canvas id="quarterChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">Sales Channel Breakdown</div>
+    <canvas id="channelChart"></canvas>
+  </div>
+</div>
+
+<div class="footer">Sales & Revenue Analytics · FY 2024 · <span>Gbemisola Jimoh</span> · Business Analytics</div>
+
+<script>
+const gridColor = 'rgba(255,255,255,0.04)';
+const tickColor = '#4a5568';
+const tickFont = { family: 'JetBrains Mono', size: 10 };
+
+// Trend
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    datasets: [
+      {
+        label: 'Revenue',
+        data: [580,620,700,660,730,790,750,820,880,940,900,970],
+        borderColor: '#00e5ff',
+        backgroundColor: 'rgba(0,229,255,0.05)',
+        fill: true, tension: 0.4,
+        pointBackgroundColor: '#00e5ff', pointRadius: 3,
+      },
+      {
+        label: 'Previous Year',
+        data: [480,500,560,540,590,630,610,660,700,740,720,780],
+        borderColor: 'rgba(255,61,154,0.5)',
+        borderDash: [5,4], fill: false, tension: 0.4, pointRadius: 0,
+      }
+    ]
+  },
+  options: {
+    plugins: { legend: { labels: { color: tickColor, font: tickFont, boxWidth: 10 } } },
+    scales: {
+      x: { grid:{color:gridColor}, ticks:{color:tickColor,font:tickFont} },
+      y: { grid:{color:gridColor}, ticks:{color:tickColor,font:tickFont,callback:v=>'$'+v+'K'} }
+    }
+  }
+});
+
+// Category
+new Chart(document.getElementById('catChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Enterprise','Analytics','Connectors','Starter'],
+    datasets: [{
+      data: [25, 21, 17, 11],
+      backgroundColor: ['#00e5ff','#aaff00','rgba(0,229,255,0.4)','rgba(170,255,0,0.3)'],
+      borderWidth: 0, hoverOffset: 8
+    }]
+  },
+  options: {
+    cutout: '65%',
+    plugins: { legend: { position: 'bottom', labels: { color: tickColor, font: tickFont, padding: 12, boxWidth: 8 } } }
+  }
+});
+
+// Quarterly
+new Chart(document.getElementById('quarterChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Q1','Q2','Q3','Q4'],
+    datasets: [
+      { label: 'Actual', data: [1900, 2180, 2450, 2870], backgroundColor: 'rgba(0,229,255,0.7)', borderRadius: 6, borderSkipped: false },
+      { label: 'Target', data: [1800, 2100, 2300, 2600], backgroundColor: 'rgba(170,255,0,0.3)', borderRadius: 6, borderSkipped: false }
+    ]
+  },
+  options: {
+    plugins: { legend: { labels: { color: tickColor, font: tickFont, boxWidth: 10 } } },
+    scales: {
+      x: { grid:{display:false}, ticks:{color:tickColor,font:tickFont} },
+      y: { grid:{color:gridColor}, ticks:{color:tickColor,font:tickFont,callback:v=>'$'+v+'K'} }
+    }
+  }
+});
+
+// Channel
+new Chart(document.getElementById('channelChart'), {
+  type: 'bar',
+  indexAxis: 'y',
+  data: {
+    labels: ['Direct Sales','Online','Partners','Referrals','Events'],
+    datasets: [{
+      data: [38, 27, 19, 11, 5],
+      backgroundColor: ['rgba(0,229,255,0.8)','rgba(170,255,0,0.7)','rgba(0,229,255,0.5)','rgba(170,255,0,0.4)','rgba(255,61,154,0.4)'],
+      borderRadius: 4, borderSkipped: false,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid:{color:gridColor}, ticks:{color:tickColor,font:tickFont,callback:v=>v+'%'} },
+      y: { grid:{display:false}, ticks:{color:tickColor,font:tickFont} }
+    }
+  }
+});
+</script>
+</body>
+</html>

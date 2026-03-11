@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Business KPI Operations Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,600;0,900;1,300;1,900&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #1c1917;
+    --card: #28211e;
+    --card2: #322a26;
+    --amber: #f59e0b;
+    --amber2: #fbbf24;
+    --cream: #fef3c7;
+    --teal: #2dd4bf;
+    --red: #f87171;
+    --text: #fef9f0;
+    --muted: #78716c;
+    --border: rgba(255,255,255,0.07);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 30px;
+    background-image:
+      radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.1) 0%, transparent 50%);
+  }
+
+  /* HEADER */
+  .header {
+    text-align: center;
+    margin-bottom: 36px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .header::after {
+    content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+    width:80px;height:2px;background:var(--amber);
+  }
+  .eyebrow {
+    font-size: 11px; font-weight: 500; letter-spacing: 4px;
+    text-transform: uppercase; color: var(--amber); margin-bottom: 10px;
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 52px; font-weight: 900; line-height: 1;
+    color: var(--text);
+  }
+  h1 em { font-style: italic; color: var(--amber); }
+  .subtitle { font-size: 14px; color: var(--muted); margin-top: 8px; font-weight: 300; }
+
+  /* KPI */
+  .kpi-row { display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px; }
+  .kpi {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 16px;
+    text-align: center;
+    transition: transform 0.2s;
+    animation: pop 0.4s ease both;
+  }
+  .kpi:hover { transform: translateY(-3px); }
+  .kpi:nth-child(1){animation-delay:.05s}.kpi:nth-child(2){animation-delay:.1s}
+  .kpi:nth-child(3){animation-delay:.15s}.kpi:nth-child(4){animation-delay:.2s}
+  .kpi:nth-child(5){animation-delay:.25s}
+  @keyframes pop { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+  .kpi-icon { font-size: 22px; margin-bottom: 8px; }
+  .kpi-label { font-size: 9px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .kpi-value { font-family:'Fraunces',serif;font-size:30px;font-weight:900;line-height:1;color:var(--amber); }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+  /* GRID */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+  .grid-3{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:18px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;}
+  .card-title{
+    font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:18px;padding-bottom:12px;
+    border-bottom:1px solid var(--border);
+  }
+  canvas{max-height:200px;}
+
+  /* KPI GAUGES */
+  .gauge-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .gauge-item{background:var(--card2);border-radius:10px;padding:14px;}
+  .gauge-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .gauge-track{background:rgba(255,255,255,0.06);border-radius:99px;height:10px;overflow:hidden;margin-bottom:6px;}
+  .gauge-fill{height:100%;border-radius:99px;transition:width 1.2s ease;}
+  .gauge-footer{display:flex;justify-content:space-between;font-size:11px;}
+  .gauge-val{font-family:'Fraunces',serif;font-size:18px;font-weight:600;}
+
+  /* INCIDENTS TABLE */
+  .inc-table{width:100%;border-collapse:collapse;}
+  .inc-table th{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 0;border-bottom:1px solid var(--border);}
+  .inc-table td{padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;}
+  .inc-table tr:last-child td{border-bottom:none;}
+  .status{font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px;}
+  .resolved{background:rgba(45,212,191,0.15);color:var(--teal);}
+  .open{background:rgba(248,113,113,0.15);color:var(--red);}
+  .progress{background:rgba(245,158,11,0.15);color:var(--amber);}
+
+  /* HEATMAP STYLE */
+  .heatmap{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;margin-top:4px;}
+  .heat-cell{
+    aspect-ratio:1;border-radius:4px;cursor:pointer;transition:transform 0.15s;
+    position:relative;
+  }
+  .heat-cell:hover{transform:scale(1.2);z-index:10;}
+  .month-labels{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;margin-bottom:4px;}
+  .month-label{font-size:9px;color:var(--muted);text-align:center;letter-spacing:1px;}
+
+  .footer{text-align:center;margin-top:24px;font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+  .footer span{color:var(--amber);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="eyebrow">Business Intelligence · Operations</div>
+  <h1>Business <em>KPI</em><br>Operations Dashboard</h1>
+  <div class="subtitle">Key performance indicators across all business units · FY 2024</div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-icon">📈</div>
+    <div class="kpi-label">Operational Efficiency</div>
+    <div class="kpi-value">87%</div>
+    <div class="kpi-sub" style="color:var(--teal)">↑ +15% vs Q3</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-icon">⚡</div>
+    <div class="kpi-label">Process Cycle Time</div>
+    <div class="kpi-value">2.4d</div>
+    <div class="kpi-sub" style="color:var(--teal)">↓ -0.8d faster</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-icon">🎯</div>
+    <div class="kpi-label">SLA Compliance</div>
+    <div class="kpi-value">94%</div>
+    <div class="kpi-sub" style="color:var(--teal)">↑ Above target</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-icon">👥</div>
+    <div class="kpi-label">Customer Satisfaction</div>
+    <div class="kpi-value">4.6</div>
+    <div class="kpi-sub" style="color:var(--muted)">Out of 5.0</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-icon">🔄</div>
+    <div class="kpi-label">Avg Resolution Time</div>
+    <div class="kpi-value">6.2h</div>
+    <div class="kpi-sub" style="color:var(--teal)">↓ -22% reduced</div>
+  </div>
+</div>
+
+<!-- ROW 1 -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Monthly KPI Performance Score</div>
+    <canvas id="kpiTrendChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">Department KPI Scores (Q4 2024)</div>
+    <canvas id="deptChart"></canvas>
+  </div>
+</div>
+
+<!-- ROW 2 -->
+<div class="grid-3">
+  <div class="card">
+    <div class="card-title">Key Metric Gauges</div>
+    <div class="gauge-grid">
+      <div class="gauge-item">
+        <div class="gauge-label">On-Time Delivery</div>
+        <div class="gauge-track"><div class="gauge-fill" style="width:91%;background:var(--teal)"></div></div>
+        <div class="gauge-footer"><span class="gauge-val" style="color:var(--teal)">91%</span><span style="font-size:10px;color:var(--muted)">Target: 90%</span></div>
+      </div>
+      <div class="gauge-item">
+        <div class="gauge-label">Budget Utilization</div>
+        <div class="gauge-track"><div class="gauge-fill" style="width:78%;background:var(--amber)"></div></div>
+        <div class="gauge-footer"><span class="gauge-val" style="color:var(--amber)">78%</span><span style="font-size:10px;color:var(--muted)">Target: 85%</span></div>
+      </div>
+      <div class="gauge-item">
+        <div class="gauge-label">Staff Utilization</div>
+        <div class="gauge-track"><div class="gauge-fill" style="width:85%;background:var(--amber2)"></div></div>
+        <div class="gauge-footer"><span class="gauge-val" style="color:var(--amber2)">85%</span><span style="font-size:10px;color:var(--muted)">Target: 80%</span></div>
+      </div>
+      <div class="gauge-item">
+        <div class="gauge-label">Error Rate</div>
+        <div class="gauge-track"><div class="gauge-fill" style="width:32%;background:var(--red)"></div></div>
+        <div class="gauge-footer"><span class="gauge-val" style="color:var(--red)">3.2%</span><span style="font-size:10px;color:var(--muted)">Target: &lt;5%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Incident Tracker</div>
+    <table class="inc-table">
+      <thead><tr><th>Type</th><th>Count</th><th>Avg Time</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>System Downtime</td><td>3</td><td>1.2h</td><td><span class="status resolved">Resolved</span></td></tr>
+        <tr><td>Data Quality</td><td>7</td><td>3.4h</td><td><span class="status resolved">Resolved</span></td></tr>
+        <tr><td>Process Delays</td><td>12</td><td>5.1h</td><td><span class="status progress">In Progress</span></td></tr>
+        <tr><td>Compliance Flags</td><td>2</td><td>8.0h</td><td><span class="status open">Open</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Process Volume by Month</div>
+    <canvas id="volumeChart"></canvas>
+  </div>
+</div>
+
+<!-- ROW 3: Radar + Activity heatmap -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Business Unit Performance Radar</div>
+    <canvas id="radarChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">Monthly Activity Intensity</div>
+    <div class="month-labels">
+      <div class="month-label">JAN</div><div class="month-label">FEB</div>
+      <div class="month-label">MAR</div><div class="month-label">APR</div>
+      <div class="month-label">MAY</div><div class="month-label">JUN</div>
+      <div class="month-label">JUL</div><div class="month-label">AUG</div>
+      <div class="month-label">SEP</div><div class="month-label">OCT</div>
+      <div class="month-label">NOV</div><div class="month-label">DEC</div>
+    </div>
+    <div class="heatmap" id="heatmap"></div>
+    <div style="margin-top:16px;display:flex;align-items:center;gap:8px;justify-content:flex-end;">
+      <span style="font-size:10px;color:var(--muted)">Low</span>
+      <div style="width:10px;height:10px;border-radius:2px;background:rgba(245,158,11,0.1)"></div>
+      <div style="width:10px;height:10px;border-radius:2px;background:rgba(245,158,11,0.35)"></div>
+      <div style="width:10px;height:10px;border-radius:2px;background:rgba(245,158,11,0.6)"></div>
+      <div style="width:10px;height:10px;border-radius:2px;background:rgba(245,158,11,0.85)"></div>
+      <div style="width:10px;height:10px;border-radius:2px;background:#f59e0b"></div>
+      <span style="font-size:10px;color:var(--muted)">High</span>
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.6;">
+      Peak operational activity in <span style="color:var(--amber)">Q3 & Q4</span>, driven by year-end reporting cycles and new market expansion initiatives.
+    </div>
+  </div>
+</div>
+
+<div class="footer">Business KPI Operations · FY 2024 · <span>Gbemisola Jimoh</span> · Business Analytics</div>
+
+<script>
+const gc = 'rgba(255,255,255,0.05)';
+const tc = '#78716c';
+const tf = { family: 'Plus Jakarta Sans', size: 10 };
+
+// KPI Trend
+new Chart(document.getElementById('kpiTrendChart'), {
+  type: 'line',
+  data: {
+    labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    datasets: [
+      { label:'Efficiency', data:[72,74,76,75,79,82,80,84,86,88,87,89], borderColor:'#f59e0b', fill:false, tension:0.4, pointRadius:3, pointBackgroundColor:'#f59e0b' },
+      { label:'SLA Compliance', data:[85,86,88,87,89,90,91,92,93,94,93,95], borderColor:'#2dd4bf', fill:false, tension:0.4, pointRadius:3, pointBackgroundColor:'#2dd4bf' },
+      { label:'CSAT', data:[78,79,80,82,83,84,85,86,87,88,89,90], borderColor:'rgba(245,158,11,0.4)', borderDash:[4,3], fill:false, tension:0.4, pointRadius:0 }
+    ]
+  },
+  options: {
+    plugins:{ legend:{ labels:{ color:tc, font:tf, boxWidth:10 } } },
+    scales:{
+      x:{ grid:{color:gc}, ticks:{color:tc,font:tf} },
+      y:{ grid:{color:gc}, ticks:{color:tc,font:tf,callback:v=>v+'%'}, min:60, max:100 }
+    }
+  }
+});
+
+// Dept
+new Chart(document.getElementById('deptChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Finance','Ops','Sales','HR','IT','Legal'],
+    datasets: [{
+      data: [88, 87, 82, 79, 91, 76],
+      backgroundColor: ['#f59e0b','rgba(245,158,11,0.7)','rgba(245,158,11,0.6)','rgba(245,158,11,0.5)','#2dd4bf','rgba(248,113,113,0.6)'],
+      borderRadius: 6, borderSkipped: false,
+    }]
+  },
+  options: {
+    plugins:{ legend:{display:false} },
+    scales:{
+      x:{ grid:{display:false}, ticks:{color:tc,font:tf} },
+      y:{ grid:{color:gc}, ticks:{color:tc,font:tf,callback:v=>v+'%'}, min:60, max:100 }
+    }
+  }
+});
+
+// Volume
+new Chart(document.getElementById('volumeChart'), {
+  type: 'bar',
+  data: {
+    labels: ['J','F','M','A','M','J','J','A','S','O','N','D'],
+    datasets: [{
+      data: [420,390,480,450,510,530,490,560,580,620,600,680],
+      backgroundColor: 'rgba(245,158,11,0.6)',
+      borderRadius: 4, borderSkipped: false,
+    }]
+  },
+  options: {
+    plugins:{ legend:{display:false} },
+    scales:{
+      x:{ grid:{display:false}, ticks:{color:tc,font:tf} },
+      y:{ grid:{color:gc}, ticks:{color:tc,font:tf} }
+    }
+  }
+});
+
+// Radar
+new Chart(document.getElementById('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Efficiency','Quality','Speed','Cost Control','Customer Focus','Innovation'],
+    datasets: [
+      { label:'Q3 2024', data:[80,82,75,78,85,70], borderColor:'rgba(245,158,11,0.6)', backgroundColor:'rgba(245,158,11,0.1)', pointBackgroundColor:'#f59e0b' },
+      { label:'Q4 2024', data:[87,88,83,82,90,78], borderColor:'#2dd4bf', backgroundColor:'rgba(45,212,191,0.08)', pointBackgroundColor:'#2dd4bf' }
+    ]
+  },
+  options: {
+    plugins:{ legend:{ labels:{ color:tc, font:tf, boxWidth:10 } } },
+    scales:{ r:{
+      grid:{ color:gc },
+      ticks:{ color:tc, font:{size:9}, backdropColor:'transparent', stepSize:20 },
+      pointLabels:{ color:'#a8a29e', font:{family:'Plus Jakarta Sans',size:10} },
+      min:0, max:100
+    }}
+  }
+});
+
+// Heatmap
+const heatmap = document.getElementById('heatmap');
+const intensities = [
+  [0.2,0.3,0.25,0.4,0.35,0.3],
+  [0.3,0.4,0.5,0.55,0.6,0.45],
+  [0.4,0.6,0.7,0.65,0.8,0.75],
+  [0.5,0.7,0.8,0.85,0.9,0.95],
+  [0.6,0.75,0.85,0.9,0.95,1.0],
+  [0.35,0.45,0.5,0.6,0.65,0.55],
+  [0.4,0.5,0.6,0.65,0.7,0.6],
+  [0.5,0.6,0.7,0.75,0.8,0.7],
+  [0.6,0.7,0.8,0.85,0.9,0.85],
+  [0.7,0.8,0.9,0.95,1.0,0.95],
+  [0.65,0.75,0.85,0.9,0.95,0.9],
+  [0.8,0.9,0.95,1.0,0.95,0.85]
+];
+intensities.forEach((rows, mi) => {
+  rows.forEach(val => {
+    const cell = document.createElement('div');
+    cell.className = 'heat-cell';
+    cell.style.background = `rgba(245,158,11,${val})`;
+    cell.title = `Month ${mi+1}: ${Math.round(val*100)}% activity`;
+    heatmap.appendChild(cell);
+  });
+});
+</script>
+</body>
+</html>
